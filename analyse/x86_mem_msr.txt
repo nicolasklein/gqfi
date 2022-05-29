@@ -1,0 +1,135 @@
+# $arg0: memory address
+# $arg1: 32-bit value
+define mem_write
+  set $backup_pc = $pc
+  set $backup_tos = *(int*)$sp
+  set $backup_eax = $eax
+  set $backup_ebx = $ebx
+
+  # put the memory address in $ebx
+  set $ebx = $arg0
+  # put the value in $eax
+  set $eax = $arg1
+
+  # mov    %eax,(%ebx): opcode 67 89 03 [little endian!]
+  set *(int*)$sp = 0xcc038967
+  # set temporary breakpoint after that instruction
+  tbreak *(((char*)$sp)+3)
+
+  # x/i $sp
+  jump *$sp
+
+  set *(int*)$sp = $backup_tos
+  set $eax = $backup_eax
+  set $ebx = $backup_ebx
+
+  # return to previous instruction and stop there
+  tbreak *$backup_pc
+  jump *$backup_pc
+end
+
+# $arg0: memory address
+# $retval: 32-bit value
+define mem_read
+  set $backup_pc = $pc
+  set $backup_tos = *(int*)$sp
+  set $backup_eax = $eax
+  set $backup_ebx = $ebx
+
+  # put the memory address in $ebx
+  set $ebx = $arg0
+
+  # mov    (%ebx),%eax: opcode 67 8b 03 [little endian!]
+  set *(int*)$sp = 0xcc038b67
+  # set temporary breakpoint after that instruction
+  tbreak *(((char*)$sp)+3)
+
+  # x/i $sp
+  jump *$sp
+
+  set $retval = ($eax & 0xFFFFFFFF)
+
+  set *(int*)$sp = $backup_tos
+  set $eax = $backup_eax
+  set $ebx = $backup_ebx
+
+  # return to previous instruction and stop there
+  tbreak *$backup_pc
+  jump *$backup_pc
+end
+
+
+# $arg0: msr address
+# $arg1: 64-bit value
+define msr_write
+  set $backup_pc = $pc
+  set $backup_tos = *(int*)$sp
+  set $backup_edx = $edx
+  set $backup_eax = $eax
+  set $backup_ecx = $ecx
+
+  # select the specific MSR
+  set $ecx = $arg0
+  # 64-bit value in EDX:EAX
+  set $edx = ($arg1 >> 32) & 0xFFFFFFFF
+  set $eax = $arg1 & 0xFFFFFFFF
+
+  # wrmsr (opcode 0x0f30) [little endian!]
+  set *(short*)$sp = 0x300f
+  # set temporary breakpoint after that instruction
+  tbreak *(((short*)$sp)+1)
+
+  # x/i $sp
+  jump *$sp
+
+  set *(int*)$sp = $backup_tos
+  set $edx = $backup_edx
+  set $eax = $backup_eax
+  set $ecx = $backup_ecx
+
+  # return to previous instruction and stop there
+  tbreak *$backup_pc
+  jump *$backup_pc
+end
+
+# $arg0: msr address
+# $retval: 64-bit value
+define msr_read
+  set $backup_pc = $pc
+  set $backup_tos = *(int*)$sp
+  set $backup_edx = $edx
+  set $backup_eax = $eax
+  set $backup_ecx = $ecx
+
+  p/x $pc
+
+  # select the specific MSR
+  set $ecx = $arg0
+
+  # rdmsr (opcode 0x0f32) [little endian!]
+  set *(short*)$sp = 0x320f
+  # set temporary breakpoint after that instruction
+  tbreak *(((short*)$sp)+1)
+
+  # x/i $sp
+  jump *$sp
+
+  p/x $pc
+
+  set $retval = (($rdx & 0xFFFFFFFF) << 32) | ($rax & 0xFFFFFFFF)
+
+  p/x $retval
+
+  set *(int*)$sp = $backup_tos
+  set $edx = $backup_edx
+  set $eax = $backup_eax
+  set $ecx = $backup_ecx
+
+  # return to previous instruction and stop there
+  thbreak *$backup_pc
+  jump *$backup_pc
+
+  p/x $pc
+
+end
+

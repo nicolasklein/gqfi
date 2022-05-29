@@ -1,0 +1,20 @@
+define lapic_enable_performance_counter_nmi
+  # Get physical address of the APIC registers
+  #msr_read 0x001B
+  set $IA32_APIC_BASE = 0xFEE00000
+
+  # Local Vector Table Register for performance counter (offset: 0x340)
+  # vector number = 0, Bits 8-10 = 100b if NMI, others = 0
+  mem_write ($IA32_APIC_BASE+0x340) 0x400
+  
+  # monitor info lapic
+end
+
+define lapic_disable_performance_counter_nmi
+  set $IA32_APIC_BASE = 0xFEE00000
+
+  # Local Vector Table Register for performance counter (offset: 0x340)
+  # vector number = 0, Bits 8-10 = 0, Bit 16 = 1 (masked)
+  mem_write ($IA32_APIC_BASE+0x340) 0x00010000
+end
+

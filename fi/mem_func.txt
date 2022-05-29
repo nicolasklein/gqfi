@@ -1,0 +1,91 @@
+# gqfi is a qemu based fault injection tool to simulate transient and permant memory faults 
+# Copyright (C) 2022  Nicolas Klein
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Sets the variable $pattern to a value of either 32 or 64 bit,
+# according to the type of machine (32 or 64 bit)
+define create_pattern
+  if (sizeof(void*) == 4)
+    set $pattern = 0xabcddcba
+    set $returnValue = 4
+  end
+  if (sizeof(void*) == 8)
+    set $pattern = 0xabcddcbaabcddcba
+    set $returnValue = 8
+  end
+end
+
+
+# Write pattern to a memory region
+# $arg0 = Start of mem region
+# $arg1 = End of mem region
+define write_pattern
+  set $adr = (void**)$arg0
+  while ($adr != (void**)$arg1)
+    set *$adr = $pattern
+    set $adr = $adr +1
+  end
+end
+
+
+# Reads the pattern back from a stack region
+# The first address, where the pattern changes
+# is stored in $retval
+define read_pattern_stack
+  set $adr = (void**)$arg0
+  set $retval = 0
+  while ($adr != (void**)$arg1 && $retval == 0)
+    if (*$adr != $pattern)
+      set $retval = $adr
+    end
+    set $adr = $adr +1 
+  end
+end
+
+
+# Reads the pattern from a memory region
+# Returns start addr  and end addr of region, where the pattern has changed
+define read_pattern_until_change
+  set $adr = (void**)$arg0
+  set $start_of_change = 0
+  set $end_of_change = 0
+
+  #Get start of change
+  while ($adr != (void**)$arg1 && $start_of_change == 0)
+    if (*$adr != $pattern)
+      set $start_of_change = $adr
+    end
+    set $adr = $adr +1 
+  end
+
+  #Get end of change
+  while ($adr != (void**)$arg1 && $end_of_change == 0)
+    if (*$adr == $pattern)
+      set $end_of_change = $adr -1
+    end
+    set $adr = $adr +1
+  end
+end
+
+define watch_addr
+  p/x $arg0
+  watch *(short*)$arg0
+  commands
+    silent
+    set *$arg0 = *$arg0 | 0x1
+    cont
+  end
+end
