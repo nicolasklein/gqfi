@@ -1,4 +1,4 @@
-# gqfi is a qemu based fault injection tool to simulate transient and permant memory faults 
+# gqfi is a qemu based fault injection tool to simulate transient and permanent memory faults 
 # Copyright (C) 2022  Nicolas Klein
 
 # This program is free software: you can redistribute it and/or modify
