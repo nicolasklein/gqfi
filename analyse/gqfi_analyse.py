@@ -15,13 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-from math import comb
 import os
 import logging
 import json
 import subprocess
 from typing import List
-from venv import create
 
 class File:
     def __init__(self, basename : str, filename : str, abs_path : str) -> None:
@@ -56,12 +54,16 @@ def get_elf_programs_from_folder(folder_path : str) -> List[File]:
     
     return files_to_analyze
 
-def read_files_from_all_folders(folders : List[str]) -> List[File]:
+def read_files_from_all_folders(folder : str) -> List[File]:
+    """
+    Search for all ELF-Files in the specified folder.
+    Returns the list with files to analyze
+    """
+
     files_to_analyze : List[File] = []
 
-    for folder in folders:
-        files_in_folder_structure : List[File] = get_elf_programs_from_folder(folder)
-        files_to_analyze += files_in_folder_structure
+    files_in_folder_structure : List[File] = get_elf_programs_from_folder(folder)
+    files_to_analyze += files_in_folder_structure
 
     return files_to_analyze
 
@@ -102,7 +104,6 @@ def run_analysis_on_host(cmd : str):
 
 def run_limited_analysis_on_cluster(cmd : str, computers_in_cluster : List[str]):
     cmd = f'echo "{cmd}"| parallel --tag --onall -S {",".join(computers_in_cluster)} -j+0 ' + "{}"
-    #print(cmd)
     subprocess.run(cmd, shell=True, check=True)
 
 def generate_standard_config_file():
@@ -112,24 +113,31 @@ def generate_standard_config_file():
     
     std_config_path = "standard_config_file.json"
 
-    std_config_file = """{
+    std_config_file_content = """{
         "create_64_bit_elf_wrapper" : true,
-        output_folder_analyze" : "/home/nicolas/Documents/Bachelor-Thesis/repo/runs/",
-        "output_folder_qemu_snapshot" : "/home/nicolas/Documents/Bachelor-Thesis/repo/runs/",
+        "output_folder_analyze" : "PATH TO FOLDER",
+        "output_folder_qemu_snapshot" : "PATH TO FOLDER",
+        "output_folder_fi_results" : "PATH TO FOLDER",
         "qemu_image_size_in_MB" : 500,
-        "mode" : "SINGLE_BIT_FLIP",
-        "time_mode" : "RUNTIME",
-        "samples" : 1000,
+        "mode" : "SINGLE_BIT_FLIP or PERMANENT",
+        "time_mode" : "INSTRUCTIONS or RUNTIME",
+        "timemode_runtime_method" : "MIN or MEAN or MEDIAN",
+        "samples" : 50000,
+        "chunk_factor" : 16,
         "marker_start" : "main",
         "marker_finished" : "FAIL_FINISHED",
         "marker_detected" : "FAIL_DETECTED",
         "marker_nmi_handler" : "wrapper_2",
         "marker_stack_ready" : "setup_idt",
+        "marker_traps" : ["wrapper_0", "wrapper_1","wrapper_2","wrapper_3","wrapper_4","wrapper_5","wrapper_6","wrapper_7","wrapper_8","wrapper_9","wrapper_10","wrapper_11","wrapper_12","wrapper_13","wrapper_14","wrapper_15","wrapper_16","wrapper_17","wrapper_18","wrapper_19","wrapper_20","wrapper_21","wrapper_22","wrapper_23","wrapper_24","wrapper_25","wrapper_26","wrapper_27","wrapper_28","wrapper_29","wrapper_30","wrapper_31"],
         "mem_regions" : [
             ["___BSS_START__", "init_stack", "NO_ANALYSIS"],
-            ["init_stack", "init_stack.end", "COMPLETE_ANALYSIS"],
+            ["init_stack", "init_stack.end", "STACK_ANALYSIS"],
             ["init_stack.end", "___DATA_END__", "NO_ANALYSIS"]
-        ]
+        ],
+        "timeout_mulitplier" : 25,
+        "runParallelInCluster" : false,
+        "clusterListFile" : "PATH TO CLUSTER FILE"
     }
     """
 
@@ -141,16 +149,17 @@ def generate_standard_config_file():
             
             usr_input = input().strip()
             if usr_input == "N":
-                logging.warning("Standard configuration file already exists. Aborting")
+                logging.warning("Standard configuration file already exists. Aborting...")
                 exit(-1)    
             if usr_input == "Y":
-                logging.warning("Overwriting standard configuration file")
+                logging.warning("Overwriting standard configuration file...")
                 wait_for_user_input = False
     try:
         with open(std_config_path, "w") as f:
-            f.write(std_config_file)
+            f.write(std_config_file_content)
+            print(f"Standard configuration written to {std_config_path}.")
     except OSError as err:
-        logging.fatal("OS Error occurred while trying to generate standard config file")
+        logging.fatal("OSError occurred while trying to generate standard config file")
         logging.fatal(err)
         exit(-1)
     except Exception as err:
@@ -183,21 +192,29 @@ def main():
     
     parser = argparse.ArgumentParser(description="Analysis tool for future fault injection phases")
     parser.add_argument("-c", "--config", type=str, help="Configuration file to use for all ELF-files found in --folder")
-    parser.add_argument("-f", "--folder", nargs="*", help="Folder path with configuration files to be analyzed")
+    parser.add_argument("-f", "--folder", type=str, help="Folder path with benchmark files to be analyzed")
     parser.add_argument("-g", "--generate", action="store_true", help="Generates a default config file")
-    parser.add_argument("-maxprocesses",type=int, default=len(os.sched_getaffinity(0)) , help="Maximum numbers of child processes to run simultaneously (Defaults to number of cores of the system)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
+    parser.add_argument("-maxprocesses",type=int, default=2 * len(os.sched_getaffinity(0)), help="Maximum numbers of child processes to run simultaneously (Defaults to number of cores of the system * 2)")
     args = parser.parse_args()
 
     if args.generate:
         print("Generating standard configuration file...")
         generate_standard_config_file()
-        print("Done")
         exit(0)
+
+    if not args.config and not args.folder:
+        logging.error("--config and --folder are required parameters. Aborting.")
+        exit(-1)
 
     abs_config_path = os.path.abspath(args.config)
     json_config = parse_json_config(abs_config_path)
+    
     files_to_analyze : List[File] = read_files_from_all_folders(args.folder)
+    if len(files_to_analyze) == 0:
+        logging.error("No valid folder found. Aborting.")
+        exit(-1)
+
     abs_elf_path = os.path.abspath(args.folder[0])
 
     #Check if 64 bit elf files need to be wrapped into 32 bit elf files
