@@ -26,7 +26,7 @@ cd gqfi/analyse && python3 gqfi_analyse.py -g
 cd .. && mkdir config && mv analyse/standard_config_file.json config/config.json && cd config
 ```
 
-4) Edit the config file with your favorite text editor. You can find a detailed explanation in the [configuration section](##Configuration).
+4) Edit the config file with your favorite text editor. You can find a detailed explanation in the [configuration section](#Configuration).
 
 5) Now you are ready to run your first fault injection campagne. But first you have to run the analysis. In this phase the tool will collect neccessary information like runtime, correct output and so on. 
 ```
