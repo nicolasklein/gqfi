@@ -16,7 +16,6 @@ define mem_write
   # set temporary breakpoint after that instruction
   tbreak *(((char*)$sp)+3)
 
-  # x/i $sp
   jump *$sp
 
   set *(int*)$sp = $backup_tos
@@ -44,7 +43,6 @@ define mem_read
   # set temporary breakpoint after that instruction
   tbreak *(((char*)$sp)+3)
 
-  # x/i $sp
   jump *$sp
 
   set $retval = ($eax & 0xFFFFFFFF)
@@ -79,7 +77,6 @@ define msr_write
   # set temporary breakpoint after that instruction
   tbreak *(((short*)$sp)+1)
 
-  # x/i $sp
   jump *$sp
 
   set *(int*)$sp = $backup_tos
@@ -101,8 +98,6 @@ define msr_read
   set $backup_eax = $eax
   set $backup_ecx = $ecx
 
-  p/x $pc
-
   # select the specific MSR
   set $ecx = $arg0
 
@@ -111,14 +106,10 @@ define msr_read
   # set temporary breakpoint after that instruction
   tbreak *(((short*)$sp)+1)
 
-  # x/i $sp
+
   jump *$sp
 
-  p/x $pc
-
   set $retval = (($rdx & 0xFFFFFFFF) << 32) | ($rax & 0xFFFFFFFF)
-
-  p/x $retval
 
   set *(int*)$sp = $backup_tos
   set $edx = $backup_edx
@@ -128,8 +119,6 @@ define msr_read
   # return to previous instruction and stop there
   thbreak *$backup_pc
   jump *$backup_pc
-
-  p/x $pc
 
 end
 
