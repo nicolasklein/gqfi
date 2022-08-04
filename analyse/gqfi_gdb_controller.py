@@ -14,11 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-from asyncore import close_all
 import gdb
-from cProfile import run
-from re import sub
 import time
 import logging
 import subprocess
@@ -143,6 +139,7 @@ def start_qemu(serial_output_path : str, image_path : str):
     """
     Start QEMU as a remote target
     """
+    print(f"target remote | qemu-system-x86_64 -S -gdb stdio -m 8 -enable-kvm -cpu kvm64,pmu=on,enforce -kernel {elf32} -display none -serial file:{serial_output_path} -drive file={image_path}")
     gdb.execute(f"target remote | qemu-system-x86_64 -S -gdb stdio -m 8 -enable-kvm -cpu kvm64,pmu=on,enforce -kernel {elf32} -display none -serial file:{serial_output_path} -drive file={image_path}")
 
 
@@ -282,10 +279,7 @@ def write_results_to_file(filepath : str, result : str):
 
 def measure_time_as_instructions() -> Tuple[List[int], int]:
     start = time.perf_counter()
-    gdb.execute("hbreak insertsort_main")
-    gdb.execute("continue")
-    logging.warning(get_runtime_of_program(TIMING_INSTRUCTIONS))
-    #run_until_end()
+    run_until_end()
     end = time.perf_counter()
     return [get_runtime_of_program(TIMING_INSTRUCTIONS)], end - start 
 

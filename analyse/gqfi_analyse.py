@@ -187,6 +187,56 @@ def create_qemu_dummy_image(path):
         logging.fatal(f"Couldn't create QEMU image in path {path}")
         return False
 
+
+def checkConfigurationFile(jsonConfig):
+    # Check if all specified paths exists
+    if "output_folder_analyze" in jsonConfig:
+        if not os.path.exists(jsonConfig['output_folder_analyze']):
+            os.mkdir(jsonConfig['output_folder_analyze'])
+    else:
+        logging.fatal("output_folder_analyze - No path specified")
+        exit(-1)
+
+    if "output_folder_qemu_snapshot" in jsonConfig:
+        if not os.path.exists(jsonConfig['output_folder_qemu_snapshot']):
+            os.mkdir(jsonConfig['output_folder_qemu_snapshot'])
+    else:
+        logging.fatal("output_folder_qemu_snapshot - No path specified")
+        exit(-1)
+
+    if "output_folder_fi_results" in jsonConfig:
+        if not os.path.exists(jsonConfig['output_folder_fi_results']):
+            os.mkdir(jsonConfig['output_folder_fi_results'])
+    else:
+        logging.fatal("output_folder_fi_results - No path specified")
+        exit(-1)
+
+    if not (jsonConfig["mode"] == "SINGLE_BIT_FLIP" or jsonConfig["mode"] == "PERMANENT"):
+        logging.fatal("Wrong mode. Choose either SINGLE_BIT_FLIP or PERMANENT")
+        exit(-1)
+
+    if not (jsonConfig["time_mode"] == "INSTRUCTIONS" or jsonConfig["time_mode"] == "RUNTIME"):
+        logging.fatal("Wrong time_mode. Choose either INSTRUCTIONS or RUNTIME")
+        exit(-1)
+
+    # If the cpu cycles should be measured, the option timemode_runtime_method must be set 
+    if jsonConfig["time_mode"] == "RUNTIME":
+        if not (jsonConfig["timemode_runtime_method"] == "MIN" or jsonConfig["timemode_runtime_method"] == "MEAN" or jsonConfig["timemode_runtime_method"] == "MEDIAN"):
+            logging.fatal("Wrong timemode_runtime_method. Choose either MIN, MEDIAN or MEAN")
+            exit(-1)
+        
+    if "runParallelInCluster" in jsonConfig:
+        if jsonConfig["runParallelInCluster"]:
+            if "clusterListFile" in jsonConfig:
+                if not os.path.exists(jsonConfig["clusterListFile"]):
+                    logging.fatal("Invalid path (clusterListFile)")
+                    exit(-1)
+            else:
+                logging.fatal("runParallelInCluster is set to true, but the option clusterListFile is not set.")
+                exit(-1)
+
+
+
 def main():
     print("GQFI - Analysis Tool")
     
@@ -209,6 +259,7 @@ def main():
 
     abs_config_path = os.path.abspath(args.config)
     json_config = parse_json_config(abs_config_path)
+    checkConfigurationFile(json_config)
     
     files_to_analyze : List[File] = read_files_from_all_folders(args.folder)
     if len(files_to_analyze) == 0:

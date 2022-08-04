@@ -457,15 +457,6 @@ def execute_single_bit_flip(expected_serial_output, runtime, timeout_in_seconds,
     injection_address, choosen_bit = get_bit_to_flip(memory_regions)
     enable_pmu_timing(TIMING_MODE, time_to_stop)
 
-    # time.sleep(5)
-    
-    # gdb.execute(f"msr_read {IA32_FIXED_CTR2}")
-    # abc = gdb.parse_and_eval("$retval")
-    # logging.warning(abc)
-
-    # time.sleep(5)
-    
-
     #set and get addresses of all relevant functions (NMI, FINISHED, DETECTED)
     gdb.execute(f'thbreak *&{MARKER_NMI_HANDLER}')
     addr_nmi_handler = hex(gdb.parse_and_eval(f"&{MARKER_NMI_HANDLER}"))
