@@ -122,6 +122,7 @@ def generate_standard_config_file():
         "mode" : "SINGLE_BIT_FLIP or PERMANENT",
         "time_mode" : "INSTRUCTIONS or RUNTIME",
         "timemode_runtime_method" : "MIN or MEAN or MEDIAN",
+        "permanent_mode" : "STUCK_AT_0, STUCK_AT_1, RANDOM",
         "samples" : 50000,
         "chunk_factor" : 16,
         "marker_start" : "main",

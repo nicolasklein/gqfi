@@ -67,6 +67,7 @@ def main():
     with open(config_path, 'r') as file:
         json_config = json.load(file)
         fault_mode = json_config['mode']
+        permanent_mode = json_config['permanent_mode']
         analyze_folder = json_config['output_folder_analyze']
         qemu_image_folder = json_config['output_folder_qemu_snapshot']
         output_folder_fi_results = json_config['output_folder_fi_results']
@@ -100,7 +101,7 @@ def main():
         timeout_thread = threading.Timer(1500, timeout_handler)
         timeout_thread.start()
         
-        py_arguments = f'py arg0 = "{path_elf32}"; arg1 = "{path_elf64}"; arg2 = "{timing_mode}"; arg3 = "{full_name}"; arg4 = "{analyze_folder}"; arg5 = "{qemu_image_folder}"; arg6 = "{marker_start}"; arg7 = "{marker_finished}"; arg8 = "{marker_detected}"; arg9 = "{marker_nmi_handler}"; arg10 = "{marker_stack_ready}"; arg11 = "{id_run}"; arg12 = "{number_of_experiments}"; arg13 = "{output_folder_fi_results}"; arg14 = "{marker_traps}"; arg15 = "{timeout_multiplier}"; arg16 = "{timemode_runtime_method}"; arg17 = "{fault_mode}"; arg18 = "{qemu_id}"'
+        py_arguments = f'py arg0 = "{path_elf32}"; arg1 = "{path_elf64}"; arg2 = "{timing_mode}"; arg3 = "{full_name}"; arg4 = "{analyze_folder}"; arg5 = "{qemu_image_folder}"; arg6 = "{marker_start}"; arg7 = "{marker_finished}"; arg8 = "{marker_detected}"; arg9 = "{marker_nmi_handler}"; arg10 = "{marker_stack_ready}"; arg11 = "{id_run}"; arg12 = "{number_of_experiments}"; arg13 = "{output_folder_fi_results}"; arg14 = "{marker_traps}"; arg15 = "{timeout_multiplier}"; arg16 = "{timemode_runtime_method}"; arg17 = "{fault_mode}"; arg18 = "{qemu_id}"; arg19 = "{permanent_mode}";'
         cmd = f"gdb -q {path_elf64} -ex '{py_arguments}' -x gqfi_gdb_controller.py -batch-silent"
         r = subprocess.Popen(cmd, shell=True)
         r.wait()
