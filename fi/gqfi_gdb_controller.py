@@ -56,6 +56,7 @@ import time
 # arg16             timemode_runtime_method
 # arg17             fault mode
 # arg18             qemu_id to identify a qemu process
+# arg19             selector for permanent fault mode (stuck to 0, stuck to 1, random)
 
 ELF32 = arg0
 ELF64 = arg1
@@ -79,6 +80,7 @@ timeout_multiplier = arg15
 TIMEMODE_RUNTIME_METHOD = arg16
 FAULT_MODE = arg17
 QEMU_ID = arg18
+permanent_fault_mode = arg19
 
 
 QEMU_IMAGE = ""
@@ -100,6 +102,9 @@ TIMING_RUNTIME = "RUNTIME"
 RUNTIME_MIN = "MIN"
 RUNTIME_MEAN = "MEAN"
 RUNTIME_MEDIAN = "MEDIAN"
+
+PERMANENT_STUCK_0 = "STUCK_AT_0"
+PERMANENT_STUCK_1 = "STUCK_AT_1"
 ## Registers
 IA32_PERF_GLOBAL_CTRL = 0x38F
 IA32_PERF_GLOBAL_STATUS = 0x38E
@@ -681,10 +686,14 @@ def set_bit_state(injection_address, choosen_bit):
 
     number = 0
 
-    #randomly select if the value of the choosen_bit is stuck at zero or one
-    #fail stuck at 1
-    #bit_state = random.choice([0, 1])
-    bit_state = 1
+    #Select the state for the choosen bit
+    if permanent_fault_mode == PERMANENT_STUCK_0:
+        bit_state = 0
+    elif permanent_fault_mode == PERMANENT_STUCK_1:
+        bit_state = 1
+    else:
+        bit_state = random.choice([0, 1])
+
 
     if bit_state == 0:
         mask = 255 ^ (1 << choosen_bit)
@@ -694,7 +703,6 @@ def set_bit_state(injection_address, choosen_bit):
         stuck_bit_execution_string = f"set *(char*){injection_address} = *(char*){injection_address} | (1 << {choosen_bit})"
 
     gdb.execute(stuck_bit_execution_string)
-    #gdb.execute(f"watch_addr {injection_address}")
     global_watchpoint = Bit_Watchpoint(f"*(char*){injection_address}", gdb.BP_WATCHPOINT)
 
 
