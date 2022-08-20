@@ -81,7 +81,7 @@ qemu_folder = config["output_folder_qemu_snapshot"]
 qemu_image_size = config["qemu_image_size_in_MB"]
 timing_mode = config["time_mode"]
 marker_main = config["marker_start"]
-marker_finised = config["marker_finished"]
+marker_finished = config["marker_finished"]
 marker_stack_ready = config["marker_stack_ready"]
 mem_regions = config['mem_regions']
 MARKER_START = config['marker_start']
@@ -139,7 +139,6 @@ def start_qemu(serial_output_path : str, image_path : str):
     """
     Start QEMU as a remote target
     """
-    print(f"target remote | qemu-system-x86_64 -S -gdb stdio -m 8 -enable-kvm -cpu kvm64,pmu=on,enforce -kernel {elf32} -display none -serial file:{serial_output_path} -drive file={image_path}")
     gdb.execute(f"target remote | qemu-system-x86_64 -S -gdb stdio -m 8 -enable-kvm -cpu kvm64,pmu=on,enforce -kernel {elf32} -display none -serial file:{serial_output_path} -drive file={image_path}")
 
 
@@ -232,19 +231,21 @@ def run_until_end():
     """
     Run until the end of the program
     """
-    gdb.execute(f"hbreak {marker_finised}")
+    gdb.execute(f"hbreak {marker_finished}")
     gdb.execute("continue")
 
 
 def close_qemu():
-    #Close qemu and gdb
-    gdb.execute('monitor quit')
-    gdb.execute('disconnect')
+    #Close qemu
+    try:
+        gdb.execute('monitor quit')
+        gdb.execute('disconnect')
+    except:
+        #In this case qemu or the connection is broken
+        pass
 
 def close():
-    #Close qemu and gdb
-    gdb.execute('monitor quit')
-    gdb.execute('disconnect')
+    close_qemu()
     gdb.execute('quit 0')
 
 
@@ -253,14 +254,14 @@ def get_runtime_of_program(timing_mode : str) -> int:
     Returns the runtime, measured by the PMU module
     """
 
-    timing_result = 0
+    timing_result : int = 0
     if timing_mode == TIMING_INSTRUCTIONS:
         gdb.execute(f"msr_read {IA32_FIXED_CTR0}")
-        timing_result = gdb.parse_and_eval("$retval")
+        timing_result = int(gdb.parse_and_eval("$retval"))
 
     if timing_mode == TIMING_RUNTIME:
         gdb.execute(f"msr_read {IA32_FIXED_CTR2}")
-        timing_result = gdb.parse_and_eval("$retval")
+        timing_result = int(gdb.parse_and_eval("$retval"))
     
     return timing_result
 
@@ -277,26 +278,26 @@ def write_results_to_file(filepath : str, result : str):
         logging.fatal(f"PATH:{filepath}")
         logging.fatal(err)
 
-def measure_time_as_instructions() -> Tuple[List[int], int]:
-    start = time.perf_counter()
+def measure_time_as_instructions() -> Tuple[List[int], float]:
+    start : float = time.perf_counter()
     run_until_end()
-    end = time.perf_counter()
+    end : float = time.perf_counter()
     return [get_runtime_of_program(TIMING_INSTRUCTIONS)], end - start 
 
-def measure_time_as_cpu_cycles() -> Tuple[List[int], int]:
-    runtimes = []
+def measure_time_as_cpu_cycles() -> Tuple[List[int], float]:
+    runtimes : List[int] = []
     duration_in_seconds = 0
 
     for _ in range(20):
         load_vm_state()
-        start = time.perf_counter()
+        start : float = time.perf_counter()
         run_until_end()
-        end = time.perf_counter()
+        end : float = time.perf_counter()
 
         if duration_in_seconds == 0:
             duration_in_seconds = end - start
 
-        runtime = int(get_runtime_of_program(TIMING_RUNTIME))
+        runtime : int = int(get_runtime_of_program(TIMING_RUNTIME))
         runtimes.append(runtime)
     
     return runtimes, duration_in_seconds
@@ -411,8 +412,6 @@ def read_results_from_mem(resulting_mem_regions, all_mem, addr_size_in_bytes):
                 #Append the inconsistent region
                 resulting_mem_regions.append([start_addr_of_change, hex(end_addr_of_change), COMPLETE_ANALYSIS])
     
-
-    print(not_used_regions)
     return resulting_mem_regions
 
 def execute_golden_run(filepath_for_runtime_results, filepath_runtime_seconds):
