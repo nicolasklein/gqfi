@@ -274,7 +274,7 @@ def main():
     
     qemu_image_folder = append_path_backslash(json_config['output_folder_qemu_snapshot'])
 
-    create_qemu_dummy_image(qemu_image_folder)
+    #create_qemu_dummy_image(qemu_image_folder)
 
     cmd_host, cmd_cluster = create_parallel_shell_command(files_to_analyze, abs_config_path)
     run_analysis_on_host(cmd_host)
